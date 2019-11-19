@@ -1,14 +1,15 @@
 import mmap as mmap
-
+import pdb
 
 class FileSystem:
 
     def __init__(self):
         self.fileOrigin = "fileOrigin.dat"
         self.num_size_fat_reserved = 4
-        self.fat_size = 2048
-        self.bock_size = 1024
-        self.p_memory = 2048
+        self.blocks = 2048
+        self.fat_size = self.blocks * 2
+        self.block_size = 1024
+        self.dir_entry_size = 32
 
     def build_file(self):
 
@@ -21,7 +22,7 @@ class FileSystem:
                 else:
                     new_file_origin.write(b"0000")
 
-            for i in range(self.p_memory * self.bock_size):
+            for i in range(self.blocks * self.block_size):
                 new_file_origin.write(b"0000")
             new_file_origin.close()
 
@@ -47,9 +48,18 @@ class FileSystem:
                 mm.close()
 
     def get_block_with_name(self, block_name):
-        pass
+        with open(self.fileOrigin, "r+b") as new_file_origin:
 
-    def write_dir(self, name, folder, parent = 1):
+            target = mmap.mmap(new_file_origin.fileno(), 0).readline()
+            for i in range(0, len(target), 4):
+                block = new_file_origin.read(4)
+                #print(block)
+                if block == block_name:
+                    print(int((i / 4) - 4))
+                    return int((i / 4) - 4)
+
+    # type 1 arquivo, 2 diretorio e 0 vazio
+    def write_dir(self, name, type, parent = 1):
 
         empty_block = self.get_empty_block()
 
@@ -59,7 +69,7 @@ class FileSystem:
         self.write_in_fat(empty_block)
 
         entry = str(
-            name.ljust(25, '0') + str(1 if folder else 0) + str(empty_block).rjust(4, '0') + '0000').encode('utf-8')
+            name.ljust(25, '0') + str(type) + str(empty_block).rjust(4, '0') + '0000').encode('utf-8')
 
         start = 2048 + (parent * 2048)
         end = start + 2048
@@ -75,9 +85,9 @@ class FileSystem:
 
 
 
-
 if __name__ == "__main__":
     f = FileSystem()
+    #pdb.set_trace()
     f.build_file()
     print("Bock number: " + str(f.get_empty_block()))
     f.write_in_fat(f.get_empty_block())
